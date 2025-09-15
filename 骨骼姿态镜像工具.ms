@@ -383,7 +383,7 @@ rollout BoneMirrorRollout "镜像工具v1.1" width:230 height:585
     )
     on btn_update pressed do
     (
-        shellLaunch "" ""  -- ★ 网址留空占位
+        shellLaunch "https://github.com/AshToAsh815/3dsMax-Bones-mirror-tool-v1.1" ""  -- ★ 网址留空占位
     )
     on btn_surprise pressed do
     (

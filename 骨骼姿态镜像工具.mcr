@@ -388,7 +388,7 @@ buttonText:"Ash-¹Ç÷À¾µÏñ"
         )
         on btn_update pressed do
         (
-            shellLaunch "" ""  -- ¡ï ÍøÖ·Áô¿ÕÕ¼Î»
+            shellLaunch "https://github.com/AshToAsh815/3dsMax-Bones-mirror-tool-v1.1" ""  -- ¡ï ÍøÖ·Áô¿ÕÕ¼Î»
         )
         on btn_surprise pressed do
         (

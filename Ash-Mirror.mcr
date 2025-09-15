@@ -383,7 +383,7 @@ rollout BoneMirrorRollout "Ash-Mirror v1.1" width:230 height:585
     )
     on btn_update pressed do
     (
-        shellLaunch "" ""  -- placeholder
+        shellLaunch "https://github.com/AshToAsh815/3dsMax-Bones-mirror-tool-v1.1" ""  -- placeholder
     )
     on btn_surprise pressed do
     (

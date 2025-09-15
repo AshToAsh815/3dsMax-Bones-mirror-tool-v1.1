@@ -1,4 +1,5 @@
 骨骼姿态镜像工具（BoneMirrorTool）说明书
+兼容3dsMax2008及以上版本（Compatible with 3dsMax2008 and above）
 
 一、工具简介
 Bro做MOD每次都要调两边的姿势调累了,做了个脚本
