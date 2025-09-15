@@ -6,9 +6,9 @@ Bro做MOD每次都要调两边的姿势调累了,做了个脚本
 
 二、文件构成
 工具包含以下文件/文件夹：
-- BoneMirrorTool.mcr
+- 骨骼姿态镜像工具.mcr
   宏脚本文件，安装后可在 Customize UI 中生成按钮。
-- BoneMirrorTool.ms
+- 骨骼姿态镜像工具.ms
   普通脚本文件，包含工具的核心逻辑。
 - UI/ 文件夹
   存放按钮图标等资源，必须与脚本放在同一路径下，否则按钮会退回文字显示。
@@ -58,9 +58,9 @@ BoneMirrorTool is a 3ds Max script tool for mirroring the pose of bones from one
 
 2. File Structure
 The tool consists of:
-- BoneMirrorTool.mcr
+- Ash-Mirror.mcr
   MacroScript file. Registers the tool in Customize UI.
-- BoneMirrorTool.ms
+- Ash-Mirror.ms
   Standard script file containing the main logic.
 - UI/ folder
   Stores button icons. Must be placed in the same path as the scripts.
