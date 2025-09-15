@@ -14,17 +14,6 @@ Bro做MOD每次都要调两边的姿势调累了,做了个脚本
   存放按钮图标等资源，必须与脚本放在同一路径下，否则按钮会退回文字显示。
   图标文件名：Ash.png、001.png、002.png、003.png
 
-目录结构示例：
-3ds Max/
- └─ <usermacros>/
-     ├─ BoneMirrorTool.mcr
-     ├─ BoneMirrorTool.ms
-     └─ UI/
-         ├─ Ash.png
-         ├─ 001.png
-         ├─ 002.png
-         └─ 003.png
-
 三、.ms 与 .mcr 的区别
 - .ms (MaxScript Script)
   普通脚本，运行后立即执行，不会自动注册按钮。用于开发调试，或由 .mcr 调用。
@@ -76,17 +65,6 @@ The tool consists of:
 - UI/ folder
   Stores button icons. Must be placed in the same path as the scripts.
   Icon filenames: Ash.png, 001.png, 002.png, 003.png
-
-Directory example:
-3ds Max/
- └─ <usermacros>/
-     ├─ BoneMirrorTool.mcr
-     ├─ BoneMirrorTool.ms
-     └─ UI/
-         ├─ Ash.png
-         ├─ 001.png
-         ├─ 002.png
-         └─ 003.png
 
 3. Difference between .ms and .mcr
 - .ms (MaxScript Script)
