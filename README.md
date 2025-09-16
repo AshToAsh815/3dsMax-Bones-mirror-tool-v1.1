@@ -1,4 +1,5 @@
 Ash - 骨骼镜像工具 v2.0 简易说明书
+<img width="450" height="940" alt="截图" src="https://github.com/user-attachments/assets/990058c5-7063-4181-9fff-040b1f0fed98" />
 
 更新项：
 ①、加入”匹配预设“功能，可以保存或者删除你的预设（包含四种模式的预设皆可保存与删除，提高工作效率）
