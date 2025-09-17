@@ -1,6 +1,3 @@
--- 3ds Max MacroScript Command File (.mcr)
--- 仅适配MCR格式，保留所有原始逻辑与内容
-
 global BoneMirrorRollout
 
 /* ---------- Preset storage (Force replace mapping table presets, not affected by old files) ---------- */
@@ -110,10 +107,25 @@ fn BM_MapByTable core mapStr =
     )
 )
 
-/* ---------- Find Target Bone ---------- */
+/* ---------- Find Target Bone (Core Fix: Contain mode bidirectional match + Global search) ---------- */
+-- Add: Global search target bone (not dependent on hierarchy, fix cross-parent matching issue)
+fn BM_GlobalFindNodeByCore tgtCore =
+(
+    if classOf tgtCore != String or tgtCore == "" then return undefined
+    for node in objects where isValidNode node do
+    (
+        if (BM_CoreName node.name) == tgtCore then
+            return node
+    )
+    undefined
+)
+
 fn BM_FindCounterpartCore core mode Lstr Rstr mapStr =
 (
     local t = undefined
+
+    -- Force type check: Ensure core is valid string
+    if classOf core != String or core == "" then return undefined
 
     -- Mapping Table Priority Mode: Try mapping table first, then fallback to L/R rules
     if mode == "Mapping Table Priority" then
@@ -136,7 +148,7 @@ fn BM_FindCounterpartCore core mode Lstr Rstr mapStr =
         return undefined
     )
 
-    -- Other modes' logic remains unchanged
+    -- Core Fix: Contain mode bidirectional symmetric match (check current side first)
     case mode of
     (
         "Prefix":
@@ -153,10 +165,17 @@ fn BM_FindCounterpartCore core mode Lstr Rstr mapStr =
         )
         "Contain":
         (
-            if (Lstr != "" and (findString core Lstr) != undefined) then
-                t = substituteString core Lstr Rstr
-            else if (Rstr != "" and (findString core Rstr) != undefined) then
+            -- Fix 1: Independent check for R and L, no dependency on else if
+            local hasR = (Rstr != "" and (findString core Rstr) != undefined)
+            local hasL = (Lstr != "" and (findString core Lstr) != undefined)
+
+            if hasR then  -- Right bone: Replace R with L (key fix for right→left match)
                 t = substituteString core Rstr Lstr
+            else if hasL then  -- Left bone: Replace L with R (keep original logic)
+                t = substituteString core Lstr Rstr
+
+            -- Fix 2: Avoid invalid replacement (same as original core)
+            if t != undefined and t == core then t = undefined
         )
         default: t = undefined
     )
@@ -204,22 +223,35 @@ fn BM_FindCounterpartNode node mode Lstr Rstr mapStr =
     if tgtCore == undefined then return undefined
 
     local srcParent = node.parent
+    local candidates = #()  -- Fix 3: Use candidate list for all possible target bones
+
+    -- 1. Try find in corresponding parent (keep original hierarchy match)
     if srcParent != undefined do
     (
         local tgtParent = BM_FindCounterpartNode srcParent mode Lstr Rstr mapStr
         if tgtParent != undefined then
         (
             local inParent = BM_FindNodeByCoreInParent tgtParent tgtCore
-            if inParent != undefined then return inParent
+            if inParent != undefined do append candidates inParent
         )
     )
 
+    -- 2. Try find in top hierarchy (fix parent mismatch issue)
     local top = BM_GetTopAncestor node
     if top != undefined then
     (
-        local found = BM_FindNodeByCoreInHierarchy top tgtCore
-        if found != undefined then return found
+        local inHierarchy = BM_FindNodeByCoreInHierarchy top tgtCore
+        if inHierarchy != undefined do append candidates inHierarchy
     )
+
+    -- 3. Force global search (final fallback, fix cross-hierarchy match issue)
+    local globalNode = BM_GlobalFindNodeByCore tgtCore
+    if globalNode != undefined do append candidates globalNode
+
+    -- Return first valid target (not self)
+    for cand in candidates where cand != undefined and cand != node do
+        return cand
+        
     undefined
 )
 
@@ -969,18 +1001,22 @@ rollout BoneMirrorRollout "Ash-Mirror v2.0" width:230 height:710
     on btn_surprise pressed do shellLaunch "https://www.bilibili.com/video/BV1GJ411x7h7/" ""
 )
 
-/* ---------- MacroScript Definition (MCR核心入口) ---------- */
+/* ---------- Display and Macro Definition ---------- */
+fn BM_Show =
+(
+    try(destroyDialog BoneMirrorRollout) catch()
+    createDialog BoneMirrorRollout 170 710 \
+        style:#(#style_titlebar,#style_sysmenu,#style_resizing) \
+        dockable:true
+)
+
 macroScript BoneMirrorTool
 category:"Bone Tools"
 toolTip:"Ash-Mirror"
 buttonText:"Ash-Mirror"
 (
-    on execute do
-    (
-        -- 强制初始化并显示Rollout
-        try(destroyDialog BoneMirrorRollout) catch()
-        createDialog BoneMirrorRollout 170 710 \
-            style:#(#style_titlebar,#style_sysmenu,#style_resizing) \
-            dockable:true
-    )
+    on execute do BM_Show()
 )
+
+-- Force initialization, then display rollout immediately
+BM_Show()
