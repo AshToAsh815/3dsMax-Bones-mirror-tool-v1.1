@@ -1,4 +1,5 @@
 骨骼镜像工具（Bone Mirror Tool v3.0）说明书
+<img width="1920" height="1030" alt="截图" src="https://github.com/user-attachments/assets/a88611ea-012c-44a4-9241-f8ed46a9b322" />
 
 软件版本兼容性：
 
