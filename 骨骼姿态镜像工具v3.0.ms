@@ -265,13 +265,44 @@ fn BM_MakeMirrorMatrix axisStr =
     )
 )
 
+-- 新增：创建局部镜像矩阵
+fn BM_MakeLocalMirrorMatrix mode =
+(
+    case mode of
+    (
+        "X"   : matrix3 [-1,0,0] [0,1,0] [0,0,1] [0,0,0]
+        "Y"   : matrix3 [1,0,0] [0,-1,0] [0,0,1] [0,0,0]
+        "Z"   : matrix3 [1,0,0] [0,1,0] [0,0,-1] [0,0,0]
+        "XY"  : matrix3 [-1,0,0] [0,-1,0] [0,0,1] [0,0,0]
+        "XZ"  : matrix3 [-1,0,0] [0,1,0] [0,0,-1] [0,0,0]
+        "YZ"  : matrix3 [1,0,0] [0,-1,0] [0,0,-1] [0,0,0]
+        "XYZ" : matrix3 [-1,0,0] [0,-1,0] [0,0,-1] [0,0,0]
+        default: matrix3 [1,0,0] [0,1,0] [0,0,1] [0,0,0]
+    )
+)
+
 /* ---------- 镜像应用 ---------- */
-fn BM_ApplyMirrorRecursive node M mode Lstr Rstr mapStr doPos doRot doScl doChildren ignoreMissing =
+fn BM_ApplyMirrorRecursive node M mode Lstr Rstr mapStr doPos doRot doScl doChildren ignoreMissing useLocalRotationMirror localMirrorAxes =
 (
     local tgt = BM_FindCounterpartNode node mode Lstr Rstr mapStr
     if tgt != undefined and tgt != node then
     (
-        local newTM = M * node.transform * M
+        local newTM
+        
+        -- 根据是否使用局部旋转镜像选择不同的计算方式
+        if useLocalRotationMirror then
+        (
+            -- 局部旋转镜像逻辑
+            local localMirror = BM_MakeLocalMirrorMatrix localMirrorAxes
+            local src_local = if node.parent != undefined then (inverse node.parent.transform) * node.transform else node.transform
+            newTM = localMirror * src_local * localMirror
+            newTM = if tgt.parent != undefined then tgt.parent.transform * newTM else newTM
+        )
+        else
+        (
+            -- 原有全局镜像逻辑
+            newTM = M * node.transform * M
+        )
 
         if (doPos and doRot and doScl) then tgt.transform = newTM
         else
@@ -285,15 +316,16 @@ fn BM_ApplyMirrorRecursive node M mode Lstr Rstr mapStr doPos doRot doScl doChil
 
     if doChildren then
         for c in node.children do
-            BM_ApplyMirrorRecursive c M mode Lstr Rstr mapStr doPos doRot doScl doChildren ignoreMissing
+            BM_ApplyMirrorRecursive c M mode Lstr Rstr mapStr doPos doRot doScl doChildren ignoreMissing useLocalRotationMirror localMirrorAxes
 )
 
-fn BM_MirrorOneFrame t roots M mode Lstr Rstr mapStr doPos doRot doScl doChildren ignoreMissing =
+-- 修改函数定义，增加局部旋转相关参数
+fn BM_MirrorOneFrame t roots M mode Lstr Rstr mapStr doPos doRot doScl doChildren ignoreMissing useLocalRotationMirror localMirrorAxes =
 (
     at time t
     (
         for r in roots do
-            BM_ApplyMirrorRecursive r M mode Lstr Rstr mapStr doPos doRot doScl doChildren ignoreMissing
+            BM_ApplyMirrorRecursive r M mode Lstr Rstr mapStr doPos doRot doScl doChildren ignoreMissing useLocalRotationMirror localMirrorAxes
     )
 )
 
@@ -617,8 +649,8 @@ fn BM_ShowBuiltinDenyDialog =
     win.Dispose()
 )
 
-/* ---------- UI 卷展栏（修正映射表预设显示/保存） ---------- */
-rollout BoneMirrorRollout "镜像工具v2.1" width:230 height:710
+/* ---------- UI 卷展栏（修正映射表预设显示/保存，调整GitHub按钮位置） ---------- */
+rollout BoneMirrorRollout "镜像工具v3.0" width:230 height:780
 (
     -- 镜像轴相关控件
     dotNetControl pic_axis "System.Windows.Forms.PictureBox" width:21 height:21 tooltip:"镜像轴功能图标标识，用于视觉区分镜像轴设置区域"
@@ -626,6 +658,10 @@ rollout BoneMirrorRollout "镜像工具v2.1" width:230 height:710
     dropdownlist ddl_axis "" items:#("X","Y","Z") selection:1 tooltip:"选择镜像操作的基准坐标轴（X/Y/Z），需根据骨骼在场景中的朝向选择，确保镜像后姿态符合预期"
     checkbox     chk_children "包含子骨骼" checked:true tooltip:"控制镜像范围：勾选时同时处理选中骨骼的所有子骨骼，未勾选时仅处理选中的顶层骨骼"
     checkbox     chk_ignoreMissing "遇缺失节点继续" checked:true tooltip:"处理异常场景：勾选时若找不到某骨骼的对侧节点，跳过该节点继续处理其他骨骼；未勾选时直接停止操作"
+
+    -- 局部旋转镜像相关控件
+    checkbox chk_useLocalRotation "使用局部镜像" checked:false width:200 tooltip:"启用后将使用局部坐标系进行旋转镜像，适合复杂骨骼结构"
+    dropdownlist ddlLocalAxes "翻转局部轴: " items:#("X", "Y", "Z", "XY", "XZ", "YZ", "XYZ") default:6 width:200 enabled:false tooltip:"选择局部坐标系下的翻转轴组合，不同组合适用于不同骨骼结构"
 
     -- 匹配模式分隔线与控件
     button sep_mode_top "" enabled:false height:3
@@ -659,18 +695,23 @@ rollout BoneMirrorRollout "镜像工具v2.1" width:230 height:710
     button btn_mirror "镜像当前帧（支持多链）" height:35 tooltip:"执行骨骼镜像核心操作：将选中骨骼链的姿态（位置/旋转/缩放）镜像到对侧骨骼，支持多骨骼链同时处理，仅对当前时间帧生效"
     label  lbl_info "当前已选择 0 条骨骼链" align:#left tooltip:"实时显示当前场景中选中的骨骼根节点数量（即独立骨骼链的数量），帮助确认操作范围"
     checkbox chk_undo "可撤销" checked:true tooltip:"控制操作是否可撤销：勾选时镜像操作会记录到Max撤销历史，可通过Ctrl+Z撤销；未勾选时操作不可撤销"
+    
+    -- 【关键调整】GitHub更新按钮移至“可撤销”勾选框下方
+    button btn_update "更新地址(GitHub)" height:22 tooltip:"点击打开脚本在GitHub的仓库地址，可获取最新版本、更新日志及源代码"
 
-    -- 作者信息区域控件
-    button sep_author_top "" enabled:false height:3
-    dotNetControl pic_author "System.Windows.Forms.PictureBox" width:180 height:45 align:#center tooltip:"作者标识图片，用于展示脚本作者相关信息"
-    button sep_author_bot "" enabled:false height:3
-
-    -- 链接按钮控件
+    -- 移除Ash图片相关控件：删除原pic_author图片控件及上下分隔线
+    -- 链接按钮控件（移除原位置的GitHub按钮）
     button btn_nexus "N网主页" height:22 tooltip:"点击打开脚本作者在Nexus Mods平台的主页，可查看作者发布的其他资源"
     button btn_bili  "B站主页" height:22 tooltip:"点击打开脚本作者在Bilibili平台的主页，可查看相关教程、动态或联系作者"
-    button btn_update "更新地址(GitHub)" height:22 tooltip:"点击打开脚本在GitHub的仓库地址，可获取最新版本、更新日志及源代码"
     button sep_links "" enabled:false height:3
     button btn_surprise "恭喜发现隐藏惊喜按钮！" height:30 tooltip:"Bro！点我有惊喜！"
+
+    -- 局部旋转勾选框状态变化时触发
+    on chk_useLocalRotation changed state do
+    (
+        -- 只有勾选时才启用翻转轴下拉框
+        ddlLocalAxes.enabled = state
+    )
 
     -- 刷新预设下拉框（兼容映射表新结构）
     fn BM_UpdatePresetDropdown =
@@ -773,17 +814,17 @@ rollout BoneMirrorRollout "镜像工具v2.1" width:230 height:710
         )
     )
 
-    -- 布局调整
+    -- 布局调整（同步包含新位置的GitHub按钮，移除Ash图片相关布局代码）
     fn BM_AdjustLayout =
     (
         local margin = 10
         local usableW = BoneMirrorRollout.width - margin*2
-        for c in #(ddl_axis, chk_children, chk_ignoreMissing,
+        for c in #(ddl_axis, chk_children, chk_ignoreMissing, chk_useLocalRotation, ddlLocalAxes,
                    sep_mode_top, ddl_mode, sep_mode_bot,
                    sep_rule_top, ddl_preset, btn_savePreset, btn_delPreset, edt_L, edt_R, lblL, lblR, lblMap, edt_Map, sep_rule_bot,
                    sep_content_bot2,
-                   btn_mirror, lbl_info, chk_undo, sep_author_top, pic_author, sep_author_bot,
-                   btn_nexus, btn_bili, btn_update, sep_links,
+                   btn_mirror, lbl_info, chk_undo, btn_update,  -- 新增btn_update到布局列表
+                   btn_nexus, btn_bili, sep_links,  -- 移除原位置的btn_update及Ash图片相关控件
                    btn_surprise) do
         (
             try(c.pos.x = margin) catch()
@@ -798,7 +839,7 @@ rollout BoneMirrorRollout "镜像工具v2.1" width:230 height:710
         lbl_info.text = "当前已选择 " + (selRoots.count as string) + " 条骨骼链"
     )
 
-    -- 卷展栏打开时初始化（强制刷新映射表预设）
+    -- 卷展栏打开时初始化（强制刷新映射表预设，移除Ash图片加载代码）
     on BoneMirrorRollout open do
     (
         BM_AdjustLayout()
@@ -812,7 +853,7 @@ rollout BoneMirrorRollout "镜像工具v2.1" width:230 height:710
         callbacks.removeScripts id:#BM_SelUpdate
         callbacks.addScript #selectionSetChanged "try(BoneMirrorRollout.BM_UpdateInfo())catch()" id:#BM_SelUpdate
 
-        -- 加载UI图片
+        -- 加载UI图片（移除Ash.png加载代码）
         local scriptPath = ""
         try( scriptPath = getSourceFileName() ) catch(scriptPath = "")
         if scriptPath != "" then
@@ -822,19 +863,27 @@ rollout BoneMirrorRollout "镜像工具v2.1" width:230 height:710
 
             local imgPath1 = uiDir + "001.png"
             if doesFileExist imgPath1 then
-                try(pic_axis.Image = (dotNetClass "System.Drawing.Image").fromFile imgPath1; pic_axis.SizeMode = (dotNetClass "System.Windows.Forms.PictureBoxSizeMode").StretchImage; pic_axis.backColor = (dotNetClass "System.Drawing.Color").FromArgb 68 68 68) catch()
+                try(
+                    pic_axis.Image = (dotNetClass "System.Drawing.Image").fromFile imgPath1; 
+                    pic_axis.SizeMode = (dotNetClass "System.Windows.Forms.PictureBoxSizeMode").Zoom;
+                    pic_axis.backColor = (dotNetClass "System.Drawing.Color").FromArgb 68 68 68
+                ) catch()
 
             local imgPath2 = uiDir + "002.png"
             if doesFileExist imgPath2 then
-                try(pic_mode.Image = (dotNetClass "System.Drawing.Image").fromFile imgPath2; pic_mode.SizeMode = (dotNetClass "System.Windows.Forms.PictureBoxSizeMode").StretchImage; pic_mode.backColor = (dotNetClass "System.Drawing.Color").FromArgb 68 68 68) catch()
+                try(
+                    pic_mode.Image = (dotNetClass "System.Drawing.Image").fromFile imgPath2; 
+                    pic_mode.SizeMode = (dotNetClass "System.Windows.Forms.PictureBoxSizeMode").Zoom;
+                    pic_mode.backColor = (dotNetClass "System.Drawing.Color").FromArgb 68 68 68
+                ) catch()
 
             local imgPath3 = uiDir + "003.png"
             if doesFileExist imgPath3 then
-                try(pic_rule.Image = (dotNetClass "System.Drawing.Image").fromFile imgPath3; pic_rule.SizeMode = (dotNetClass "System.Windows.Forms.PictureBoxSizeMode").StretchImage; pic_rule.backColor = (dotNetClass "System.Drawing.Color").FromArgb 68 68 68) catch()
-
-            local imgPath4 = uiDir + "Ash.png"
-            if doesFileExist imgPath4 then
-                try(pic_author.Image = (dotNetClass "System.Drawing.Image").fromFile imgPath4; pic_author.SizeMode = (dotNetClass "System.Windows.Forms.PictureBoxSizeMode").StretchImage; pic_author.backColor = (dotNetClass "System.Drawing.Color").FromArgb 68 68 68) catch()
+                try(
+                    pic_rule.Image = (dotNetClass "System.Drawing.Image").fromFile imgPath3; 
+                    pic_rule.SizeMode = (dotNetClass "System.Windows.Forms.PictureBoxSizeMode").Zoom;
+                    pic_rule.backColor = (dotNetClass "System.Drawing.Color").FromArgb 68 68 68
+                ) catch()
         )
     )
 
@@ -951,13 +1000,13 @@ rollout BoneMirrorRollout "镜像工具v2.1" width:230 height:710
         )
     )
 
-    -- 镜像按钮行为（保持不变）
+    -- 镜像按钮行为（添加局部旋转参数传递）
     on btn_mirror pressed do
     (
         local selRoots = BM_GetRootSelection (selection as array)
         if selRoots.count == 0 then
         (
-            messageBox "那我问你，骨骼都不选你想镜像什么？啊？你回答我！"
+            messageBox "请先选择要镜像的骨骼！"
             return()
         )
 
@@ -967,6 +1016,10 @@ rollout BoneMirrorRollout "镜像工具v2.1" width:230 height:710
         local Rstr          = edt_R.text
         local mapStr        = edt_Map.text
         local ignoreMissing = chk_ignoreMissing.checked
+        
+        -- 获取局部旋转镜像相关参数
+        local useLocalRotationMirror = chk_useLocalRotation.checked
+        local localMirrorAxes = ddlLocalAxes.selected as string
 
         local M      = BM_MakeMirrorMatrix axisStr
         local doPos  = true
@@ -974,13 +1027,14 @@ rollout BoneMirrorRollout "镜像工具v2.1" width:230 height:710
         local doScl  = true
         local doChildren = chk_children.checked
 
+        -- 执行镜像操作，确保参数完整
         if chk_undo.checked then
         (
             undo "Bone Mirror" on
             (
                 with animate on
                 (
-                    BM_MirrorOneFrame currentTime selRoots M mode Lstr Rstr mapStr doPos doRot doScl doChildren ignoreMissing
+                    BM_MirrorOneFrame currentTime selRoots M mode Lstr Rstr mapStr doPos doRot doScl doChildren ignoreMissing useLocalRotationMirror localMirrorAxes
                 )
             )
         )
@@ -988,15 +1042,15 @@ rollout BoneMirrorRollout "镜像工具v2.1" width:230 height:710
         (
             with animate on
             (
-                BM_MirrorOneFrame currentTime selRoots M mode Lstr Rstr mapStr doPos doRot doScl doChildren ignoreMissing
+                BM_MirrorOneFrame currentTime selRoots M mode Lstr Rstr mapStr doPos doRot doScl doChildren ignoreMissing useLocalRotationMirror localMirrorAxes
             )
         )
     )
 
-    -- 链接按钮（保持不变）
+    -- 链接按钮（仅调整btn_update位置，功能不变）
     on btn_nexus pressed do shellLaunch "https://next.nexusmods.com/profile/ashtoash815/mods" ""
     on btn_bili pressed do shellLaunch "https://space.bilibili.com/3493272253106937?spm_id_from=333.337.0.0" ""
-    on btn_update pressed do shellLaunch "https://github.com/AshToAsh815/3dsMax-Bones-mirror-tool-v1.1" ""
+    on btn_update pressed do shellLaunch "https://github.com/AshToAsh815/3dsMax-Bones-mirror-tool-v1.1" ""  -- 按钮功能逻辑不变
     on btn_surprise pressed do shellLaunch "https://www.bilibili.com/video/BV1GJ411x7h7/" ""
 )
 
@@ -1004,14 +1058,14 @@ rollout BoneMirrorRollout "镜像工具v2.1" width:230 height:710
 fn BM_Show =
 (
     try(destroyDialog BoneMirrorRollout) catch()
-    createDialog BoneMirrorRollout 170 710 \
+    createDialog BoneMirrorRollout 170 705 \
         style:#(#style_titlebar,#style_sysmenu,#style_resizing) \
         dockable:true
 )
 
 macroScript BoneMirrorTool
 category:"Bone Tools"
-toolTip:"Ash-骨骼姿态镜像（修复版）"
+toolTip:"Ash-骨骼姿态镜像"
 buttonText:"Ash-骨骼镜像"
 (
     on execute do BM_Show()

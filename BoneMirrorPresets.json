@@ -1,0 +1,7 @@
+{
+"prefix": [{"name":"Left/Right","l":"Left","r":"Right"},{"name":"L/R","l":"L","r":"R"},{"name":"L_/R_","l":"L_","r":"R_"},{"name":"Bip001 L /Bip001 R ","l":"Bip001 L ","r":"Bip001 R "}],
+"suffix": [{"name":"_L/_R","l":"_L","r":"_R"},{"name":"_left/_right","l":"_left","r":"_right"},{"name":"Left/Right","l":"Left","r":"Right"}],
+"contain": [{"name":"Left/Right words","l":"Left","r":"Right"},{"name":"L/R mix","l":"L","r":"R"}],
+"map": [{"name":"SuperHero","mapText":"SpiderMan_01=BatMan_114514"},{"name":"两个傻逼","mapText":"冥月千雪=你的中二魔王\n你的中二魔王=绝世大傻逼\nDante陽=绝世大傻逼\n你的中二魔王=Dante陽"}]
+}
+
