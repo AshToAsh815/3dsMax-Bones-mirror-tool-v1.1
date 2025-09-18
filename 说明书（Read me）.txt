@@ -1,126 +1,149 @@
-骨骼姿态镜像工具（BoneMirrorTool）说明书
-兼容3dsMax2008及以上版本（Compatible with 3dsMax2008 and above）
+骨骼镜像工具（Bone Mirror Tool v3.0）说明书
 
-一、工具简介
-Bro做MOD每次都要调两边的姿势调累了,做了个脚本
+软件版本兼容性：
 
-二、文件构成
-工具包含以下文件/文件夹：
-- BoneMirrorTool.mcr
-  宏脚本文件，安装后可在 Customize UI 中生成按钮。
-- BoneMirrorTool.ms
-  普通脚本文件，包含工具的核心逻辑。
-- UI/ 文件夹
-  存放按钮图标等资源，必须与脚本放在同一路径下，否则按钮会退回文字显示。
-  图标文件名：Ash.png、001.png、002.png、003.png
+支持的 3ds Max 版本：兼容 3ds Max 2016 及以上版本（基于 MaxScript 语法特性与 DotNet 控件支持范围，低版本可能存在 UI 控件加载失败或函数不支持问题）。
 
-目录结构示例：
-3ds Max/
- └─ <usermacros>/
-     ├─ BoneMirrorTool.mcr
-     ├─ BoneMirrorTool.ms
-     └─ UI/
-         ├─ Ash.png
-         ├─ 001.png
-         ├─ 002.png
-         └─ 003.png
+系统兼容性：仅支持 Windows 系统（3ds Max 本身无 macOS 版本，脚本依赖 Windows 系统的 DotNet Framework 4.0+，无需额外安装，Windows 7 及以上系统默认自带）。
+——————————————————————————————————————————————————————————————————————————
+1. 工具简介
+功能：用于 3ds Max 中骨骼姿态的左右镜像，支持多骨骼链同步处理，解决常规镜像中左右骨骼轴向不一致导致的模型错乱问题。
+核心优势：新增 “局部镜像” 功能，可针对性调整骨骼轴向；支持自定义骨骼映射规则，适配不同命名规范的骨架。
+——————————————————————————————————————————————————————————————————————————
+2. 核心功能区说明
 
-三、.ms 与 .mcr 的区别
-- .ms (MaxScript Script)
-  普通脚本，运行后立即执行，不会自动注册按钮。用于开发调试，或由 .mcr 调用。
-- .mcr (MacroScript)
-  宏脚本，安装后会在 Customize UI 中出现。用于正式分发。在本工具中，.mcr 脚本负责注册 UI，内部调用 .ms 实现功能。
+2.1 镜像轴设置
+控件	功能说明
+镜像轴（下拉框）	选择镜像基准轴（X/Y/Z），需根据骨骼在场景中的朝向选择（如 X 轴常用于左右对称骨骼）。
+包含子骨骼（勾选框）	勾选时同步镜像选中骨骼的所有子骨骼；未勾选时仅处理顶层选中骨骼。
+遇缺失节点继续（勾选框）	勾选时，若找不到某骨骼的对侧节点，跳过该节点继续处理；未勾选时直接停止操作。
 
-四、安装步骤（看不懂mcr格式安装的，ms格式的简单，拖进max就能用，脚本窗口底部还能点按钮跳到我主页看教程）
-1. 将 骨骼姿态镜像工具.mcr、骨骼姿态镜像工具.ms、UI 文件夹复制到：
-   C:\Users\<用户名>\AppData\Local\Autodesk\3dsMax\<版本>\ENU\usermacros\
-2. 启动 3ds Max。
-3. 打开菜单 ：自定义 → 自定义用户界面 → 工具栏 → 类别 → Bone Tools → 鼠标拖到工具栏安装
-4. 不在工具栏装也可以装“四元菜单”那一栏，这样窗口右键就能看到工具，或者“菜单”一栏装到顶栏的菜单里
+2.2 局部镜像设置（解决轴向不一致问题）
+控件	功能说明
+使用局部镜像（勾选框）	启用后，按骨骼局部坐标系进行旋转镜像（常规骨架无需启用，轴向错乱时必选）。
+翻转局部轴（下拉框）	仅 “使用局部镜像” 启用时可操作，选择需翻转的局部轴组合（如 YZ 轴适配特定骨骼结构）。
 
-五、主要功能
-1. 镜像轴选择：X / Y / Z。
-2. 匹配模式：前缀 / 后缀 / 包含 / 映射表优先。
-3. 命名规则：指定 L/R 标记。
-4. 映射表：手动输入特殊对应关系。
-5. 可选项：包含子骨骼 / 遇缺失节点继续 / 可撤销。
-6. 点击“镜像当前帧”执行操作。
+2.3 匹配模式设置
+控件	功能说明
+匹配模式（下拉框）	选择骨骼左右对侧的识别逻辑：
+- 前缀 / 后缀 / 包含：按名称中的字符（如 L/R、Left/Right）匹配；
+- 映射表优先：优先按自定义映射规则匹配，无匹配时 fallback 到字符规则。
 
-六、使用流程
-1. 选择一侧骨骼链。
-2. 打开 脚本
-3. 设置镜像轴（通常为 X）。
-4. 设置匹配模式和命名规则。
-5. 点击“镜像当前帧”。
-6. 检查结果。
+2.4 命名规则与预设
+控件	功能说明
+命名预设（下拉框）	加载已保存的规则预设（如 “L/R”“_L/_R”），选择 “自定义” 可手动输入参数。
+左侧 / 右侧字符串（输入框）	非 “映射表优先” 模式下，输入识别左右骨骼的标识（如 L_、R_）。
+映射表（多行输入框）	“映射表优先” 模式下，按 “key=value” 格式输入自定义骨骼映射（每行一条规则，支持双向匹配）。
+保存 / 删除预设（按钮）	保存当前规则为新预设；删除选中预设（内置预设不可删除）。
 
-七、注意事项
-- 确保骨骼命名规范（如果有那种左右两边骨骼名乱的一批的，建议打死绑定者，那种你得把名字抄进映射表框里面再镜像）
-- 图标文件必须命名为 Ash.png、001.png、002.png、003.png。
-- UI 文件夹必须和 .mcr、.ms 同路径。
-- 建议操作前保存场景。
-- 支持撤销，关闭可撤销可提升性能。
+2.5 执行与辅助功能
+控件	功能说明
+镜像当前帧（按钮）	执行核心镜像操作，仅对当前时间帧生效，支持多骨骼链同步处理。
+当前已选择 X 条骨骼链（标签）	实时显示选中的骨骼根节点数量，确认操作范围。
+可撤销（勾选框）	勾选时，镜像操作记录到 Max 撤销历史，可通过 Ctrl+Z 撤销。
+
+——————————————————————————————————————————————————————————————————————————
+3. 操作流程
+
+3.1 常规骨架镜像（轴向一致）
+选中需要镜像的骨骼链（顶层骨骼即可）；
+在 “镜像轴” 下拉框选择对应基准轴（如 X 轴）；
+确认 “包含子骨骼” 已勾选（按需调整）；
+点击【镜像当前帧】按钮，完成操作。
+
+3.2 轴向不一致骨架镜像（模型错乱时）
+选中目标骨骼链，在 “匹配模式” 中选择对应规则（或配置映射表）；
+勾选【使用局部镜像】，在 “翻转局部轴” 中选择需调整的轴组合（如 YZ 轴）；
+点击【镜像当前帧】按钮，验证模型姿态是否正常（异常可更换局部轴组合）。
+
+3.3 自定义映射规则
+在 “匹配模式” 中选择 “映射表优先”；
+在 “映射表” 输入框按格式输入规则（如 “SpiderMan_01=BatMan_114514”）；
+选中骨骼，点击【镜像当前帧】，工具将按映射规则匹配对侧骨骼。
+——————————————————————————————————————————————————————————————————————————
+4. 其他功能
+控件 / 按钮	功能说明
+更新地址（GitHub）	打开脚本的 GitHub 仓库，获取最新版本、更新日志及源代码。
+N 网主页 / B 站主页	访问作者的 Nexus Mods 或 Bilibili 主页，查看教程或联系作者。
+——————————————————————————————————————————————————————————————————————————
+5. 注意事项
+操作前建议保存场景，避免因规则配置错误导致的骨骼姿态异常；
+映射表规则需确保 “key=value” 格式正确（至少包含 1 个 “=”），否则无法保存预设；
+内置预设（如 “Left/Right”“L/R”）不可删除，避免影响基础功能使用。
 
 
-Bone Pose Mirror Tool (BoneMirrorTool) Manual
 
-1. Introduction
-BoneMirrorTool is a 3ds Max script tool for mirroring the pose of bones from one side of a character to the other, useful in rigging and animation editing.
 
-2. File Structure
-The tool consists of:
-- BoneMirrorTool.mcr
-  MacroScript file. Registers the tool in Customize UI.
-- BoneMirrorTool.ms
-  Standard script file containing the main logic.
-- UI/ folder
-  Stores button icons. Must be placed in the same path as the scripts.
-  Icon filenames: Ash.png, 001.png, 002.png, 003.png
 
-Directory example:
-3ds Max/
- └─ <usermacros>/
-     ├─ BoneMirrorTool.mcr
-     ├─ BoneMirrorTool.ms
-     └─ UI/
-         ├─ Ash.png
-         ├─ 001.png
-         ├─ 002.png
-         └─ 003.png
+Bone Mirror Tool v3.0 User Manual
 
-3. Difference between .ms and .mcr
-- .ms (MaxScript Script)
-  Runs immediately when executed. No UI registration. Used for development/debugging or called by .mcr.
-- .mcr (MacroScript)
-  Registers into Customize UI. Used for distribution. In this tool, .mcr handles the UI while calling the .ms for logic.
+——————————————————————————————————————————————————————————————————————————
+Software Version Compatibility
 
-4. Installation
-1. Copy BoneMirrorTool.mcr, BoneMirrorTool.ms, and UI folder to:
-   C:\Users\<username>\AppData\Local\Autodesk\3dsMax\<version>\ENU\usermacros\
-2. Launch 3ds Max.
-3. Go to Customize → Customize User Interface → Toolbars.
-4. In Category: Bone Tools, find "Bone Mirror".
-5. Drag to a toolbar to create a button.
+Supported 3ds Max Versions: Compatible with 3ds Max 2016 and above. (Based on MaxScript syntax features and DotNet control support, lower versions may experience UI control loading failures or unsupported functions.)
 
-5. Main Features
-1. Mirror axis selection: X / Y / Z.
-2. Matching modes: Prefix / Suffix / Contains / Mapping Table First.
-3. Naming rules: define L/R identifiers.
-4. Mapping table: specify custom name pairs.
-5. Options: include children, ignore missing nodes, undo support.
-6. Execute by clicking "Mirror Current Frame".
+System Compatibility: Windows systems only. (3ds Max has no macOS version natively; the script relies on Windows’ DotNet Framework 4.0+, which comes pre-installed on Windows 7 and later systems—no additional installation required.)
+——————————————————————————————————————————————————————————————————————————
+1. Tool Overview
+Function: Used for left-right mirroring of bone poses in 3ds Max, supporting simultaneous processing of multiple bone chains. Resolves model distortion caused by inconsistent axes between left and right bones during regular mirroring.
+Core Advantages: New "Local Mirror" feature for targeted bone axis adjustment; supports custom bone mapping rules to adapt to skeletons with different naming conventions.
+——————————————————————————————————————————————————————————————————————————
+2. Core Function Area Description
 
-6. Usage Workflow
-1. Select the bone chain on one side.
-2. Open BoneMirrorTool.
-3. Set the mirror axis (usually X).
-4. Set matching mode and naming rules.
-5. Click "Mirror Current Frame".
-6. Check the result.
+2.1 Mirror Axis Settings
+Control	Description
+Mirror Axis (Dropdown)	Select the base axis (X/Y/Z) for mirroring. Choose based on bone orientation in the scene (e.g., X-axis is commonly used for left-right symmetric bones).
+Include Children (Checkbox)	When checked, mirrors all child bones of the selected bones; when unchecked, only processes top-level selected bones.
+Continue on Missing Nodes (Checkbox)	When checked, skips and continues processing if the counterpart of a bone is not found; when unchecked, stops the operation immediately.
 
-7. Notes
-- Ensure consistent bone naming.
-- Icon files must be named Ash.png, 001.png, 002.png, 003.png.
-- UI folder must be in the same path as .mcr and .ms.
-- Save the scene before using.
-- Undo is supported; disabling it may improve performance.
+2.2 Local Mirror Settings (Resolves Axis Inconsistency)
+Control	Description
+Use Local Mirror (Checkbox)	When enabled, performs rotation mirroring based on the bone’s local coordinate system (not needed for regular skeletons, mandatory for axis inconsistency).
+Local Axis Flip (Dropdown)	Only operable when "Use Local Mirror" is enabled. Select the combination of local axes to flip (e.g., YZ-axis for specific bone structures).
+
+2.3 Matching Mode Settings
+Control	Description
+Matching Mode (Dropdown)	Select the logic for identifying left-right bone counterparts:
+- Prefix/Suffix/Contain: Match via characters in bone names (e.g., L/R, Left/Right);
+- Map First: Prioritize custom mapping rules, fallback to character rules if no match is found.
+
+2.4 Naming Rules & Presets
+Control	Description
+Naming Presets (Dropdown)	Load saved rule presets (e.g., "L/R", "_L/_R"). Select "Custom" to enter parameters manually.
+Left/Right String (Input Boxes)	In non-"Map First" modes, enter identifiers for left/right bones (e.g., L_, R_).
+Mapping Table (Multi-line Input)	In "Map First" mode, enter custom bone mapping in "key=value" format (one rule per line, supports bidirectional matching).
+Save/Delete Preset (Buttons)	Save current rules as a new preset; delete the selected preset (built-in presets cannot be deleted).
+
+2.5 Execution & Auxiliary Functions
+Control	Description
+Mirror Current Frame (Button)	Executes the core mirror operation, effective only for the current time frame, supporting simultaneous processing of multiple bone chains.
+X Bone Chains Selected (Label)	Real-time display of the number of selected bone root nodes to confirm the operation scope.
+Undoable (Checkbox)	When checked, the mirror operation is recorded in Max’s undo history and can be undone via Ctrl+Z.
+——————————————————————————————————————————————————————————————————————————
+3. Operation Workflows
+
+3.1 Regular Skeleton Mirroring (Consistent Axes)
+Select the bone chain to mirror (only top-level bones are needed);
+Select the corresponding base axis (e.g., X-axis) from the "Mirror Axis" dropdown;
+Ensure "Include Children" is checked (adjust as needed);
+Click the Mirror Current Frame button to complete the operation.
+
+3.2 Skeleton Mirroring with Axis Inconsistency (When Model Is Distorted)
+Select the target bone chain, and choose the corresponding rule (or configure the mapping table) in "Matching Mode";
+Check Use Local Mirror, and select the axis combination to flip (e.g., YZ-axis) from "Local Axis Flip";
+Click the Mirror Current Frame button, and verify if the model pose is normal (try a different axis combination if abnormal).
+
+3.3 Custom Mapping Rules
+Select "Map First" in "Matching Mode";
+Enter rules in the "Mapping Table" input box in the required format (e.g., "SpiderMan_01=BatMan_114514");
+Select the bones, and click Mirror Current Frame—the tool will match counterpart bones using the mapping rules.
+——————————————————————————————————————————————————————————————————————————
+4. Other Functions
+Control/Button	Description
+Update (GitHub)	Opens the script’s GitHub repository to access the latest version, update logs, and source code.
+Nexus Page / Bilibili Page	Visits the author’s Nexus Mods or Bilibili homepage to view tutorials or contact the author.
+——————————————————————————————————————————————————————————————————————————
+5. Notes
+It is recommended to save the scene before operation to avoid abnormal bone poses caused by incorrect rule configurations;
+Mapping table rules must follow the correct "key=value" format (containing at least one "="), otherwise presets cannot be saved;
+Built-in presets (e.g., "Left/Right", "L/R") cannot be deleted to prevent disruption to basic functionality.
