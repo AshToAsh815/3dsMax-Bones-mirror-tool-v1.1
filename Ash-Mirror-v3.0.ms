@@ -650,7 +650,7 @@ fn BM_ShowBuiltinDenyDialog =
 )
 
 /* ---------- UI Rollout (Fix mapping table preset display/save, adjust GitHub button position) ---------- */
-rollout BoneMirrorRollout "Bone Mirror Tool v3.0" width:230 height:780
+rollout BoneMirrorRollout "Ash-Mirror-v3.0" width:230 height:780
 (
     -- Mirror axis related controls
     dotNetControl pic_axis "System.Windows.Forms.PictureBox" width:21 height:21 tooltip:"Mirror axis function icon, used to visually distinguish mirror axis setting area"
@@ -1065,8 +1065,8 @@ fn BM_Show =
 
 macroScript BoneMirrorTool
 category:"Bone Tools"
-toolTip:"Ash - Bone Pose Mirror"
-buttonText:"Ash - Bone Mirror"
+toolTip:"Ash-Mirror"
+buttonText:"Ash-Mirror"
 (
     on execute do BM_Show()
 )
