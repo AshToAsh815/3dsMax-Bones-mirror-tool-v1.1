@@ -1,177 +1,149 @@
-Ash - 骨骼镜像工具 v2.0 简易说明书
-<img width="1920" height="1030" alt="截图" src="https://github.com/user-attachments/assets/b9a42e7c-a049-4b46-b4bb-0075b0058284" />
+骨骼镜像工具（Bone Mirror Tool v3.0）说明书
 
+软件版本兼容性：
 
-更新项：
-①、加入”匹配预设“功能，可以保存或者删除你的预设（包含四种模式的预设皆可保存与删除，提高工作效率）
-②、对“映射表优先模式”的逻辑进行了一些优化
-③、增加了一些彩蛋，你可以在脚本窗口到东点点西点点就会发现
-————————————————————————————————————————————————————————————————————————
-1. 脚本概述
-基于 3ds Max Script 开发的骨骼姿态镜像工具，核心功能是将选中骨骼的位置、旋转、缩放同步到对侧骨骼（如左臂→右臂），支持多种匹配逻辑，提升动画制作效率。
-核心特性：4 种骨骼匹配模式、预设保存 / 加载、多骨骼链同步镜像、容错与可撤销操作。
+支持的 3ds Max 版本：兼容 3ds Max 2016 及以上版本（基于 MaxScript 语法特性与 DotNet 控件支持范围，低版本可能存在 UI 控件加载失败或函数不支持问题）。
 
-兼容性：兼容3dsMax2014及以上版本（本人自己的是Max2021）
-————————————————————————————————————————————————————————————————————————
-2. 安装与启动
-2.1 安装
-获取脚本文件（.ms格式）和UI文件夹，确保两者在同一目录（缺失UI仅图标不显示，功能正常）。
-加载方式：
-临时：直接将.ms文件拖放至 3ds Max 视图，自动初始化。
-永久：将脚本放入 Max 脚本目录（默认：C:\Users\用户名\AppData\Local\Autodesk\3dsMax\版本\ENU\scripts），通过「脚本 > 运行脚本」启动。
+系统兼容性：仅支持 Windows 系统（3ds Max 本身无 macOS 版本，脚本依赖 Windows 系统的 DotNet Framework 4.0+，无需额外安装，Windows 7 及以上系统默认自带）。
+——————————————————————————————————————————————————————————————————————————
+1. 工具简介
+功能：用于 3ds Max 中骨骼姿态的左右镜像，支持多骨骼链同步处理，解决常规镜像中左右骨骼轴向不一致导致的模型错乱问题。
+核心优势：新增 “局部镜像” 功能，可针对性调整骨骼轴向；支持自定义骨骼映射规则，适配不同命名规范的骨架。
+——————————————————————————————————————————————————————————————————————————
+2. 核心功能区说明
 
-2.2 启动
-脚本加载后自动弹出工具卷展栏；若未弹出，在「自定义 > 自定义用户界面 > 宏脚本 > Bone Tools」中找到「Ash - 骨骼镜像」，拖到工具栏点击启动。
-————————————————————————————————————————————————————————————————————————
-3. 界面核心区域（精简版）
-工具界面分 5 个关键区域，仅列核心交互控件：
+2.1 镜像轴设置
+控件	功能说明
+镜像轴（下拉框）	选择镜像基准轴（X/Y/Z），需根据骨骼在场景中的朝向选择（如 X 轴常用于左右对称骨骼）。
+包含子骨骼（勾选框）	勾选时同步镜像选中骨骼的所有子骨骼；未勾选时仅处理顶层选中骨骼。
+遇缺失节点继续（勾选框）	勾选时，若找不到某骨骼的对侧节点，跳过该节点继续处理；未勾选时直接停止操作。
 
-区域	核心控件及功能
+2.2 局部镜像设置（解决轴向不一致问题）
+控件	功能说明
+使用局部镜像（勾选框）	启用后，按骨骼局部坐标系进行旋转镜像（常规骨架无需启用，轴向错乱时必选）。
+翻转局部轴（下拉框）	仅 “使用局部镜像” 启用时可操作，选择需翻转的局部轴组合（如 YZ 轴适配特定骨骼结构）。
 
-镜像轴设置	- 下拉框ddl_axis：选镜像基准轴（X/Y/Z，默认 X 轴，角色左右镜像常用）
-- 复选框chk_children：是否包含子骨骼
-- 复选框chk_ignoreMissing：遇缺失骨骼是否继续
+2.3 匹配模式设置
+控件	功能说明
+匹配模式（下拉框）	选择骨骼左右对侧的识别逻辑：
+- 前缀 / 后缀 / 包含：按名称中的字符（如 L/R、Left/Right）匹配；
+- 映射表优先：优先按自定义映射规则匹配，无匹配时 fallback 到字符规则。
 
-匹配模式设置	- 下拉框ddl_mode：选骨骼匹配逻辑（前缀 / 后缀 / 包含 / 映射表优先）
+2.4 命名规则与预设
+控件	功能说明
+命名预设（下拉框）	加载已保存的规则预设（如 “L/R”“_L/_R”），选择 “自定义” 可手动输入参数。
+左侧 / 右侧字符串（输入框）	非 “映射表优先” 模式下，输入识别左右骨骼的标识（如 L_、R_）。
+映射表（多行输入框）	“映射表优先” 模式下，按 “key=value” 格式输入自定义骨骼映射（每行一条规则，支持双向匹配）。
+保存 / 删除预设（按钮）	保存当前规则为新预设；删除选中预设（内置预设不可删除）。
 
-命名规则 / 映射表	- 下拉框ddl_preset：加载已保存预设（默认 “自定义”）
-- 按钮btn_savePreset：保存当前配置为预设
-- 按钮btn_delPreset：删除选中预设（内置预设不可删）
-- 输入框edt_L/edt_R：普通模式填左右标识（如 “_L”/“_R”）
-- 多行框edt_Map：映射表模式填 “key=value” 规则（如 “SpiderMan_01=BatMan_114514”）
+2.5 执行与辅助功能
+控件	功能说明
+镜像当前帧（按钮）	执行核心镜像操作，仅对当前时间帧生效，支持多骨骼链同步处理。
+当前已选择 X 条骨骼链（标签）	实时显示选中的骨骼根节点数量，确认操作范围。
+可撤销（勾选框）	勾选时，镜像操作记录到 Max 撤销历史，可通过 Ctrl+Z 撤销。
 
-镜像执行	- 按钮btn_mirror：执行当前帧镜像（核心功能）
-- 文本lbl_info：显示选中骨骼链数量
-- 复选框chk_undo：操作是否可撤销（建议勾选）
+——————————————————————————————————————————————————————————————————————————
+3. 操作流程
 
-作者与更新	- 按钮btn_nexus/btn_bili：作者主页
-- 按钮btn_update：GitHub 更新地址
-————————————————————————————————————————————————————————————————————————
+3.1 常规骨架镜像（轴向一致）
+选中需要镜像的骨骼链（顶层骨骼即可）；
+在 “镜像轴” 下拉框选择对应基准轴（如 X 轴）；
+确认 “包含子骨骼” 已勾选（按需调整）；
+点击【镜像当前帧】按钮，完成操作。
 
-4. 核心使用教程
+3.2 轴向不一致骨架镜像（模型错乱时）
+选中目标骨骼链，在 “匹配模式” 中选择对应规则（或配置映射表）；
+勾选【使用局部镜像】，在 “翻转局部轴” 中选择需调整的轴组合（如 YZ 轴）；
+点击【镜像当前帧】按钮，验证模型姿态是否正常（异常可更换局部轴组合）。
 
-4.1 普通模式（前缀 / 后缀 / 包含，适合命名规范骨骼）
-选需镜像的骨骼根节点（如左臂根骨 “ArmRoot_L”）。
-配置：
-镜像轴：ddl_axis选 X 轴，勾选chk_children（含子骨骼）和chk_ignoreMissing（容错）。
-匹配模式：ddl_mode选对应模式（如骨骼后缀 “_L”/“_R” 选 “后缀”）。
-命名规则：edt_L填 “_L”，edt_R填 “_R”（可选：点btn_savePreset存为预设）。
-执行：勾选chk_undo，点btn_mirror，验证对侧骨骼姿态是否同步。
-
-4.2 映射表优先模式（适合命名不统一骨骼）
-选骨骼根节点，ddl_axis选 X 轴，勾选容错和含子骨骼。
-配置：
-ddl_mode选 “映射表优先”。
-edt_Map填映射规则（每行 1 条 “key=value”，如 “冥月千雪 = 你的中二魔王”，支持双向匹配，
-意思就是你两边对应的两根骨骼名字完全不一样也没关系，名字写到映射表输入框里面就能成功镜像）。
-执行：点btn_mirror，完成镜像。
-————————————————————————————————————————————————————————————————————————
-
-5. 预设管理（简单操作）
-加载：ddl_mode选对应模式，ddl_preset下拉选目标预设，参数自动填充。
-保存：配置好参数后点btn_savePreset，输入名称确认（映射表需含 “=”，否则提示格式错误）。
-删除：ddl_preset选需删除的预设（非 “自定义”），点btn_delPreset确认（内置预设禁止删除，会弹提示）。
-
-————————————————————————————————————————————————————————————————————————
-
-6. 注意事项
-骨骼命名需与匹配模式对应（如 “后缀” 模式需统一 “_L”/“_R”），否则无法匹配对侧。
-镜像轴选错会导致姿态颠倒，角色左右镜像优先试 X 轴。
-重要操作前建议备份场景，避免失误丢失数据。
-
-————————————————————————————————————————————————————————————————————————
-7. 常见问题
-问题	解决方案
-镜像后对侧骨骼无反应	1. 检查ddl_mode与骨骼命名是否匹配；2. 确认edt_L/edt_R或edt_Map参数正确
-镜像姿态颠倒（如骨骼反向）	切换ddl_axis的镜像轴（如 X 轴改 Y 轴）
-预设保存后不显示	重新启动脚本，或检查脚本目录是否有读写权限（需生成BoneMirrorPresets文件）
-映射表提示格式错误	确保每行仅 1 个 “=”（如 “a=b” 正确，“a=b=c” 错误）
+3.3 自定义映射规则
+在 “匹配模式” 中选择 “映射表优先”；
+在 “映射表” 输入框按格式输入规则（如 “SpiderMan_01=BatMan_114514”）；
+选中骨骼，点击【镜像当前帧】，工具将按映射规则匹配对侧骨骼。
+——————————————————————————————————————————————————————————————————————————
+4. 其他功能
+控件 / 按钮	功能说明
+更新地址（GitHub）	打开脚本的 GitHub 仓库，获取最新版本、更新日志及源代码。
+N 网主页 / B 站主页	访问作者的 Nexus Mods 或 Bilibili 主页，查看教程或联系作者。
+——————————————————————————————————————————————————————————————————————————
+5. 注意事项
+操作前建议保存场景，避免因规则配置错误导致的骨骼姿态异常；
+映射表规则需确保 “key=value” 格式正确（至少包含 1 个 “=”），否则无法保存预设；
+内置预设（如 “Left/Right”“L/R”）不可删除，避免影响基础功能使用。
 
 
 
 
 
-Ash - Bone Mirror Tool v2.0 Simplified Manual
-Update Items:
+Bone Mirror Tool v3.0 User Manual
 
-①、Added the "Matching Presets" feature, allowing you to save or delete your presets (presets for all four modes can be saved and deleted, improving work efficiency).
+——————————————————————————————————————————————————————————————————————————
+Software Version Compatibility
 
-②、Optimized the logic for the "Mapping Table Priority Mode."
+Supported 3ds Max Versions: Compatible with 3ds Max 2016 and above. (Based on MaxScript syntax features and DotNet control support, lower versions may experience UI control loading failures or unsupported functions.)
 
-③、Added some Easter eggs—you can explore the interface by clicking around to discover them.
-————————————————————————————————————————————————————————————————————————
+System Compatibility: Windows systems only. (3ds Max has no macOS version natively; the script relies on Windows’ DotNet Framework 4.0+, which comes pre-installed on Windows 7 and later systems—no additional installation required.)
+——————————————————————————————————————————————————————————————————————————
 1. Tool Overview
-A bone pose mirroring tool developed based on 3ds Max Script. Its core function is to sync the position, rotation, and scale of selected bones to their counterpart bones (e.g., left arm → right arm). It supports multiple matching logics to improve animation production efficiency.
+Function: Used for left-right mirroring of bone poses in 3ds Max, supporting simultaneous processing of multiple bone chains. Resolves model distortion caused by inconsistent axes between left and right bones during regular mirroring.
+Core Advantages: New "Local Mirror" feature for targeted bone axis adjustment; supports custom bone mapping rules to adapt to skeletons with different naming conventions.
+——————————————————————————————————————————————————————————————————————————
+2. Core Function Area Description
 
-Core Features: 4 bone matching modes, preset save/load, simultaneous mirroring of multiple bone chains, error tolerance, and undoable operations.
+2.1 Mirror Axis Settings
+Control	Description
+Mirror Axis (Dropdown)	Select the base axis (X/Y/Z) for mirroring. Choose based on bone orientation in the scene (e.g., X-axis is commonly used for left-right symmetric bones).
+Include Children (Checkbox)	When checked, mirrors all child bones of the selected bones; when unchecked, only processes top-level selected bones.
+Continue on Missing Nodes (Checkbox)	When checked, skips and continues processing if the counterpart of a bone is not found; when unchecked, stops the operation immediately.
 
-Compatibility: Supports 3ds Max 2014 and above (Personal test environment: 3ds Max 2021).
-————————————————————————————————————————————————————————————————————————
-2. Installation & Launch
-2.1 Installation
-Obtain the script file (in .ms format) and the UI folder. Ensure both are placed in the same directory (If the UI folder is missing, only icons won’t display—core functions remain normal).
+2.2 Local Mirror Settings (Resolves Axis Inconsistency)
+Control	Description
+Use Local Mirror (Checkbox)	When enabled, performs rotation mirroring based on the bone’s local coordinate system (not needed for regular skeletons, mandatory for axis inconsistency).
+Local Axis Flip (Dropdown)	Only operable when "Use Local Mirror" is enabled. Select the combination of local axes to flip (e.g., YZ-axis for specific bone structures).
 
-Loading Methods:
+2.3 Matching Mode Settings
+Control	Description
+Matching Mode (Dropdown)	Select the logic for identifying left-right bone counterparts:
+- Prefix/Suffix/Contain: Match via characters in bone names (e.g., L/R, Left/Right);
+- Map First: Prioritize custom mapping rules, fallback to character rules if no match is found.
 
-Temporary Loading: Drag and drop the .ms file directly into the 3ds Max viewport; initialization will start automatically.
-Permanent Loading: Place the script in the Max script directory (Default path: C:\Users\[Your Username]\AppData\Local\Autodesk\3dsMax\[Your Max Version]\ENU\scripts). Launch it via Scripts > Run Script.
-2.2 Launch
-After loading, the tool’s rollout panel will pop up automatically. If it doesn’t:
+2.4 Naming Rules & Presets
+Control	Description
+Naming Presets (Dropdown)	Load saved rule presets (e.g., "L/R", "_L/_R"). Select "Custom" to enter parameters manually.
+Left/Right String (Input Boxes)	In non-"Map First" modes, enter identifiers for left/right bones (e.g., L_, R_).
+Mapping Table (Multi-line Input)	In "Map First" mode, enter custom bone mapping in "key=value" format (one rule per line, supports bidirectional matching).
+Save/Delete Preset (Buttons)	Save current rules as a new preset; delete the selected preset (built-in presets cannot be deleted).
 
-Go to Customize > Customize User Interface > MacroScripts > Bone Tools.
-Find Ash - Bone Mirror, drag it to the toolbar, and click to launch.
-————————————————————————————————————————————————————————————————————————
-3. Core UI Areas (Simplified)
-The tool interface is divided into 5 key areas, with only core interactive controls listed below:
+2.5 Execution & Auxiliary Functions
+Control	Description
+Mirror Current Frame (Button)	Executes the core mirror operation, effective only for the current time frame, supporting simultaneous processing of multiple bone chains.
+X Bone Chains Selected (Label)	Real-time display of the number of selected bone root nodes to confirm the operation scope.
+Undoable (Checkbox)	When checked, the mirror operation is recorded in Max’s undo history and can be undone via Ctrl+Z.
+——————————————————————————————————————————————————————————————————————————
+3. Operation Workflows
 
-Area	Core Controls & Functions
-Mirror Axis Settings	- Dropdown ddl_axis: Select the mirror reference axis (X/Y/Z; default: X-axis, commonly used for left-right mirroring of character bones).
-- Checkbox chk_children: Whether to include child bones.
-- Checkbox chk_ignoreMissing: Whether to continue if bones are missing.
-Matching Mode Settings	Dropdown ddl_mode: Select bone matching logic (Prefix / Suffix / Contain / Mapping Table Priority).
-Naming Rules / Mapping Table	- Dropdown ddl_preset: Load saved presets (default: "Custom").
-- Button btn_savePreset: Save current configuration as a preset.
-- Button btn_delPreset: Delete the selected preset (built-in presets cannot be deleted).
-- Input boxes edt_L/edt_R: Enter left/right identifiers for normal modes (e.g., "_L"/"_R").
-- Multi-line box edt_Map: Enter "key=value" rules for Mapping Table mode (e.g., "SpiderMan_01=BatMan_114514").
-Mirror Execution	- Button btn_mirror: Execute mirroring for the current frame (core function).
-- Text lbl_info: Display the number of selected bone chains.
-- Checkbox chk_undo: Whether the operation is undoable (recommended to check).
-Author & Updates	- Buttons btn_nexus/btn_bili: Links to the author’s homepage.
-- Button btn_update: GitHub update link.
-————————————————————————————————————————————————————————————————————————
-4. Core Usage Tutorials
-4.1 Normal Mode (Prefix / Suffix / Contain)
-Suitable for bones with standardized naming (e.g., "_L"/"_R", "Left"/"Right").
+3.1 Regular Skeleton Mirroring (Consistent Axes)
+Select the bone chain to mirror (only top-level bones are needed);
+Select the corresponding base axis (e.g., X-axis) from the "Mirror Axis" dropdown;
+Ensure "Include Children" is checked (adjust as needed);
+Click the Mirror Current Frame button to complete the operation.
 
-Select the bone root node to mirror (e.g., left arm root "ArmRoot_L").
-Configuration:
-Mirror Axis: Select X-axis in ddl_axis; check chk_children (include child bones) and chk_ignoreMissing (error tolerance).
-Matching Mode: Select the corresponding mode in ddl_mode (e.g., "Suffix" for bones named with "_L"/"_R").
-Naming Rules: Enter "_L" in edt_L and "_R" in edt_R (Optional: Click btn_savePreset to save as a preset).
-Execution: Check chk_undo, click btn_mirror, and verify if the counterpart bone’s pose is synced.
-4.2 Mapping Table Priority Mode
-Suitable for bones with non-standardized names (no uniform left-right identifiers).
+3.2 Skeleton Mirroring with Axis Inconsistency (When Model Is Distorted)
+Select the target bone chain, and choose the corresponding rule (or configure the mapping table) in "Matching Mode";
+Check Use Local Mirror, and select the axis combination to flip (e.g., YZ-axis) from "Local Axis Flip";
+Click the Mirror Current Frame button, and verify if the model pose is normal (try a different axis combination if abnormal).
 
-Select the bone root node; select X-axis in ddl_axis; check chk_ignoreMissing (error tolerance) and chk_children (include child bones).
-Configuration:
-Select "Mapping Table Priority" in ddl_mode.
-Enter mapping rules in edt_Map (one "key=value" rule per line, e.g., "SuperMan_01=SpiderMan_02"). This supports bidirectional matching—meaning it works even if the names of corresponding bones on both sides are completely different (just enter the names in the mapping table input box).
-Execution: Click btn_mirror to complete mirroring.
-————————————————————————————————————————————————————————————————————————
-5. Preset Management (Simple Operations)
-Load: Select the corresponding mode in ddl_mode, then select the target preset from the ddl_preset dropdown—parameters will be filled automatically.
-Save: After configuring parameters, click btn_savePreset and enter a name to confirm (Mapping table rules must contain "="; otherwise, a format error prompt will appear).
-Delete: Select the preset to delete (not "Custom") in ddl_preset, click btn_delPreset to confirm (built-in presets are protected and cannot be deleted— a prompt will appear if you try).
-————————————————————————————————————————————————————————————————————————
-6. Notes
-Bone naming must match the selected matching mode (e.g., use uniform "_L"/"_R" for "Suffix" mode); otherwise, counterpart bones cannot be matched.
-Selecting the wrong mirror axis will cause inverted poses. For left-right mirroring of characters, try the X-axis first.
-It is recommended to back up the scene before important operations to avoid data loss due to mistakes.
-————————————————————————————————————————————————————————————————————————
-7. Common Issues & Solutions
-Issue	Solution
-No response from counterpart bones after mirroring	1. Check if ddl_mode matches the bone naming; 2. Verify that parameters in edt_L/edt_R or edt_Map are correct.
-Inverted bone pose after mirroring (e.g., reversed direction)	Switch the mirror axis in ddl_axis (e.g., change from X-axis to Y-axis).
-Saved preset not displayed	Restart the script, or check if the script directory has read/write permissions (the BoneMirrorPresets file needs to be generated).
-Mapping table format error prompt	Ensure each line contains only one "=" (e.g., "a=b" is correct; "a=b=c" is incorrect).
+3.3 Custom Mapping Rules
+Select "Map First" in "Matching Mode";
+Enter rules in the "Mapping Table" input box in the required format (e.g., "SpiderMan_01=BatMan_114514");
+Select the bones, and click Mirror Current Frame—the tool will match counterpart bones using the mapping rules.
+——————————————————————————————————————————————————————————————————————————
+4. Other Functions
+Control/Button	Description
+Update (GitHub)	Opens the script’s GitHub repository to access the latest version, update logs, and source code.
+Nexus Page / Bilibili Page	Visits the author’s Nexus Mods or Bilibili homepage to view tutorials or contact the author.
+——————————————————————————————————————————————————————————————————————————
+5. Notes
+It is recommended to save the scene before operation to avoid abnormal bone poses caused by incorrect rule configurations;
+Mapping table rules must follow the correct "key=value" format (containing at least one "="), otherwise presets cannot be saved;
+Built-in presets (e.g., "Left/Right", "L/R") cannot be deleted to prevent disruption to basic functionality.
